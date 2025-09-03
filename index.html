@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>泡椒和小雨宝宝天下第一好</title>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      font-family: "Microsoft YaHei", sans-serif;
+      cursor: pointer;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
+    }
+
+    .heart {
+      position: absolute;
+      top: -20px;
+      color: #ff69b4;
+      font-size: 20px;
+      opacity: 0.9;
+      user-select: none;
+      z-index: 0;
+      pointer-events: none;
+      animation-name: fall;
+      animation-timing-function: linear;
+      animation-iteration-count: infinite;
+    }
+
+    @keyframes fall {
+      0% {
+        transform: translateY(-10vh) translateX(0);
+        opacity: 0;
+      }
+
+      10% {
+        opacity: 1;
+      }
+
+      90% {
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(110vh) translateX(100px);
+        opacity: 0;
+      }
+    }
+
+    /* 星空背景 */
+    .stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
+      /* 深邃星空渐变 */
+      z-index: -2;
+      /* 最底层 */
+      pointer-events: none;
+    }
+
+    .star {
+      position: absolute;
+      background: white;
+      border-radius: 50%;
+      opacity: 0;
+      animation: twinkle 3s infinite ease-in-out;
+      box-shadow: 0 0 8px rgba(255, 255, 255, 0.8);
+    }
+
+    @keyframes twinkle {
+      0% {
+        opacity: 0.2;
+        transform: scale(1);
+      }
+
+      50% {
+        opacity: 1;
+        transform: scale(1.1);
+      }
+
+      100% {
+        opacity: 0.2;
+        transform: scale(1);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- <canvas id="canvas"></canvas> -->
+  <!-- 星空背景 -->
+  <div class="stars"></div>
+
+  <!-- 爱心 -->
+  <div class="heart"></div> <!-- 这个是模板，实际由 JS 创建 -->
+
+  <!-- 粒子画布 -->
+  <canvas id="canvas"></canvas>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    // 文字设置
+    const text = "泡椒和小雨宝宝天下第一好";
+    const fontSize = Math.min(canvas.width * 0.08, 100);
+    const fontFamily = "Microsoft YaHei, sans-serif";
+
+    // 粒子集合
+    let particles = [];
+    let isForming = false;       // 是否允许聚集成文字
+    let isExploding = false;     // 是否正在爆炸飞散
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
+    // 粒子类
+    class Particle {
+      constructor(x, y) {
+        this.targetX = x;
+        this.targetY = y;
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.vx = 0;
+        this.vy = 0;
+        this.friction = 0.95;
+        this.easeToForm = 0.03;
+        this.radius = Math.random() * 2.5 + 1;
+        this.color = `hsl(${Math.random() * 60 + 340}, 100%, 70%)`;
+      }
+
+      drift() {
+        if (Math.random() < 0.05) {
+          this.vx = (Math.random() - 0.5) * 1.5;
+          this.vy = (Math.random() - 0.5) * 1.5;
+        }
+        this.x += this.vx;
+        this.y += this.vy;
+
+        if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+        if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+      }
+
+      form() {
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        this.vx += dx * this.easeToForm;
+        this.vy += dy * this.easeToForm;
+        this.vx *= this.friction;
+        this.vy *= this.friction;
+        this.x += this.vx;
+        this.y += this.vy;
+      }
+
+      explode() {
+        const angle = Math.random() * Math.PI * 2;
+        const speed = Math.random() * 20 + 15;
+        this.vx = Math.cos(angle) * speed;
+        this.vy = Math.sin(angle) * speed;
+      }
+
+      update() {
+        if (isExploding) {
+          this.x += this.vx;
+          this.y += this.vy;
+          this.vx *= 0.96;
+          this.vy *= 0.96;
+
+          // 当速度足够慢时，停止爆炸，开始重组
+          if (Math.abs(this.vx) < 0.3 && Math.abs(this.vy) < 0.3) {
+            isExploding = false;
+            isForming = true; // 允许重新聚集
+          }
+        } else if (isForming) {
+          this.form();
+        } else {
+          this.drift();
+        }
+
+        this.draw();
+      }
+
+      draw() {
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.fill();
+      }
+    }
+
+    function createTextParticles() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.font = `bold ${fontSize}px ${fontFamily}`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, centerX, centerY);
+
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const pixels = imageData.data;
+      const result = [];
+
+      for (let y = 0; y < canvas.height; y += 5) {
+        for (let x = 0; x < canvas.width; x += 5) {
+          const idx = (y * canvas.width + x) * 4;
+          if (pixels[idx + 3] > 128) {
+            result.push(new Particle(x, y));
+          }
+        }
+      }
+      return result;
+    }
+
+    function init() {
+      particles = createTextParticles();
+    }
+
+    function animate() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      particles.forEach(p => p.update());
+      requestAnimationFrame(animate);
+    }
+
+    function createStars() {
+      const starsContainer = document.querySelector('.stars');
+      const starCount = 200; // 星星数量
+
+      for (let i = 0; i < starCount; i++) {
+        const star = document.createElement('div');
+        star.classList.add('star');
+
+        // 随机位置
+        star.style.left = Math.random() * 100 + 'vw';
+        star.style.top = Math.random() * 100 + 'vh';
+
+        // 随机大小
+        const size = Math.random() * 2 + 1;
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+
+        // 随机延迟闪烁
+        star.style.animationDelay = Math.random() * 3 + 's';
+
+        starsContainer.appendChild(star);
+      }
+    }
+
+    function createFallingHearts() {
+      setInterval(() => {
+        const heart = document.createElement('div');
+        heart.className = 'heart';
+        heart.textContent = '❤';
+        heart.style.left = Math.random() * 100 + 'vw';
+        heart.style.animationDuration = (Math.random() * 10 + 10) + 's';
+        heart.style.opacity = Math.random() * 0.5 + 0.5;
+        document.body.appendChild(heart);
+
+        setTimeout(() => {
+          heart.remove();
+        }, 21000);
+      }, 150);
+    }
+
+    // ✅ 修复点击事件：允许重复爆炸
+    canvas.addEventListener('click', () => {
+      if (isExploding) return; // 防止重复爆炸
+
+      isExploding = true;
+      isForming = false; // 关闭聚集，让粒子可以飞散
+
+      particles.forEach(p => {
+        p.explode();
+      });
+    });
+
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+      init();
+    });
+
+    // 启动
+    createStars(); // 添加星空
+    createFallingHearts();
+    init();
+    animate();
+
+    // 2秒后开始自动聚集成文字
+    setTimeout(() => {
+      isForming = true;
+    }, 2000);
+  </script>
+
+</body>
+
+</html>
